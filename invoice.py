@@ -17,6 +17,7 @@ ES_URL = os.environ['ES_URL']
 ES_INDEX = 'invoices_data'
 ES_TYPE = '_doc'
 
+
 def get_hash(string, num_digits = 8):
     md5 = hashlib.md5()
     md5.update(string.encode('utf-8'))
@@ -130,7 +131,7 @@ class Invoice:
             'elapsed_sec': self.elapsed_sec,
             'elapsed_min': self.elapsed_min
          }
-        self.es_doc = json.dumps(es_doc, indent = 4)
+        self.es_doc = json.dumps(es_doc, indent=4)
 
     def send_to_elastic(self, use_local_es=False):
         es_id = get_hash(self.filename)
@@ -143,8 +144,8 @@ class Invoice:
         )
         response = requests.post(
                         url, 
-                        data = self.es_doc,
-                        headers = {'Content-Type':'application/json'},
-                        auth = auth
+                        data=self.es_doc,
+                        headers={'Content-Type':'application/json'},
+                        auth=auth
                    )
         return response
