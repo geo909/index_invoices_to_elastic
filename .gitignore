@@ -1,0 +1,8 @@
+*.ipynb*
+.env
+env
+venv
+*zip
+.aws-sam
+__pycache__
+_trash
