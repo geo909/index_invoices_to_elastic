@@ -4,7 +4,7 @@
       "eventVersion": "2.0",
       "eventSource": "aws:s3",
       "awsRegion": "eu-central-1",
-      "eventTime": "2020-05-21T02:35:55.123Z",
+      "eventTime": "2020-09-04T15:44:19.123Z",
       "eventName": "ObjectCreated:Put",
       "userIdentity": {
         "principalId": "EXAMPLE"
@@ -27,9 +27,9 @@
           "arn": "arn:aws:s3:::example-bucket"
         },
         "object": {
-          "key": "FH00AA6581QI Α.Π.Ε.Β61928 .pdf",
+          "key": "FH67LZ9402PC Α.Π.Ε.Β106410.pdf",
           "size": 54,
-          "eTag": "069fb16da8b394c25badba3c4d4dee67",
+          "eTag": "5a213554c602a5b43a0866d51c94cf52",
           "sequencer": "0A1B2C3D4E5F678901"
         }
       }
