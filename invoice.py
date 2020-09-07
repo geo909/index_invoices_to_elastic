@@ -1,3 +1,4 @@
+from datetime import timedelta
 from requests_aws4auth import AWS4Auth
 from urllib.parse import unquote_plus
 import dateutil.parser
@@ -8,7 +9,7 @@ import pymysql
 import pymysql.cursors
 import requests
 
-if os.path.isfile('.env'): 
+if os.path.isfile('.env'):
     # in development; use environmental variables from .env file
     from dotenv import load_dotenv
     load_dotenv(verbose=True)
@@ -21,7 +22,7 @@ ES_TYPE = '_doc'
 def get_hash(string, num_digits = 8):
     md5 = hashlib.md5()
     md5.update(string.encode('utf-8'))
-    return md5.hexdigest()[:num_digits] 
+    return md5.hexdigest()[:num_digits]
 
 class Booking:
     def __init__(self, fh_code):
@@ -36,7 +37,7 @@ class Booking:
     def get_db_info(self):
         print('- Getting info from replica for', self.order_id, end = ': ')
         columns = [
-            'orderId', 
+            'orderId',
             'createdAt',
             'fullAmount',
             'hasFailed',
@@ -46,14 +47,14 @@ class Booking:
         ]
 
         query = f'''SELECT {', '.join(columns)}
-                    FROM reservations_bookings 
+                    FROM reservations_bookings
                     WHERE orderId = "{self.order_id}";'''
 
         print('connecting to db.. ', end = '')
         conn = pymysql.connect(
-                    os.environ['FH_DB_REPLICA_HOST'], 
+                    os.environ['FH_DB_REPLICA_HOST'],
                     port = 3306,
-                    user = os.environ['FH_DB_REPLICA_USER'], 
+                    user = os.environ['FH_DB_REPLICA_USER'],
                     password = os.environ['FH_DB_REPLICA_PSWD'],
                     db = os.environ['FH_DB_REPLICA_DB']
                )
@@ -76,18 +77,18 @@ class Booking:
         return True
 
 class Invoice:
-    ''' To be initiated with an S3 PUT event 
-        Important: add a condition in the event to filter for files that 
+    ''' To be initiated with an S3 PUT event
+        Important: add a condition in the event to filter for files that
         start with 'FH', otherwise there will be errors
     '''
     def __init__(self, event):
         # Attributes to get from S3 event
         self.filename = None
-        self.last_modified = None
+        self.last_modified = None # in UTC
         self.fh_code = None
-        
+
         # Attributes that require db info
-        self.booking = None
+        self.booking = None # in UTC
         self.elapsed_sec = None
         self.elapsed_min = None
         self.es_doc = None
@@ -101,7 +102,8 @@ class Invoice:
     def _parse_s3_event(self, event):
         print('- Parsing S3 PUT event..', end = ' ')
         event_time = event['Records'][0]['eventTime']
-        self.last_modified = event_time.split('.')[0]
+        last_modified = dateutil.parser.parse(event_time.split('.')[0])
+        self.last_modified = last_modified - timedelta(hours=3) # local -> utc
         source_key = event['Records'][0]['s3']['object']['key']
         filename = os.path.basename(source_key)
         # unquote_plus: replace greek %xx escape characters with normal text
@@ -114,16 +116,16 @@ class Invoice:
     def _get_booking_db_info(self):
         self.booking = Booking(self.fh_code)
         self.booking.get_db_info()
-        elapsed = dateutil.parser.parse(self.last_modified)-self.booking.created_at
+        elapsed = self.last_modified-self.booking.created_at
         self.elapsed_sec = round(elapsed.total_seconds())
         self.elapsed_min = int(self.elapsed_sec/60)
 
     def _create_elastic_doc(self):
         es_doc = {
             'filename': self.filename,
-            'last_modified': self.last_modified,
+            'last_modified': self.last_modified.strftime('%Y-%m-%dT%H:%M:%S'),
             'fh_code': self.fh_code,
-            'booking_date': self.booking.created_at.strftime('%Y-%m-%dT%H:%m:%S'),
+            'booking_date': self.booking.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
             'is_succesful': bool(self.booking.is_succesful),
             'has_failed': bool(self.booking.has_failed),
             'is_cancelled': bool(self.booking.is_cancelled),
@@ -143,7 +145,7 @@ class Invoice:
             'es' # The aws service abbreviation, for elasticsearch here
         )
         response = requests.post(
-                        url, 
+                        url,
                         data=self.es_doc,
                         headers={'Content-Type':'application/json'},
                         auth=auth
